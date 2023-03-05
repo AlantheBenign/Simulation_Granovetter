@@ -38,11 +38,8 @@ public class SimulationManager : MonoBehaviour
     public float separationFactor = 0.75f;
 
     // Parabola movement variables
-    [SerializeField] private float height = 2.0f;
-    private Vector3 startingPos;
-    private Vector3 direction;
-    private float parabolicPath;
-
+    public float height = 10.0f;
+    public float speed = 0.5f;
 
     // Planes parameters
     private float systemLength;
@@ -55,6 +52,7 @@ public class SimulationManager : MonoBehaviour
     private float agentSpacingWidth;
 
     private GameObject[] agents;
+    public GameObject[] toMoveAgents;
     
     void Awake(){
         // Getting player input
@@ -136,7 +134,7 @@ public class SimulationManager : MonoBehaviour
                 agent.GetComponent<AgentProperties>().agentThreshold = agentThreshold;
 
                 // Paint each agent according to its threshold and write the agent's threshold in its head
-                // Linear function
+                // Linear function (colorLowThreshold to colorHighThreshold)
                 /*
                     agent.GetComponent<Renderer>().material.color = new Color(((float)((colorHighThreshold[0] - colorLowThreshold[0]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
                                                                           ((float)((colorHighThreshold[1] - colorLowThreshold[1]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
@@ -144,7 +142,7 @@ public class SimulationManager : MonoBehaviour
                                                                           1);
                 */
                                                                           
-                // "Bilinear" function
+                // "Bilinear" function (colorLowThreshold to white than white to colorHighThreshold)
                 if (((float)agentThreshold)/maxThreshold < 0.5){
                     agent.GetComponent<Renderer>().material.color = new Color(((float)((255 - colorLowThreshold[0]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
                                                                           ((float)((255 - colorLowThreshold[1]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
@@ -183,13 +181,12 @@ public class SimulationManager : MonoBehaviour
             foreach(GameObject agent in agents){
                 if(agent.GetComponent<AgentProperties>().agentName == agentName){
                     gameObjectsInSector += 1;
-                    Vector3 position = new Vector3 (spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + ((gameObjectsInSector-1)%agentsPerLine)*(agentSideLength + agentSpacingLength), 
+                    Vector3 finalPosition = new Vector3 (spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + ((gameObjectsInSector-1)%agentsPerLine)*(agentSideLength + agentSpacingLength), 
                                                     agentY,
                                                     spacingWidth + agentSpacingWidth + ((float)agentSideLength)/2 + (numberOfLines - Convert.ToInt32(Math.Floor(Convert.ToDouble(((float)(gameObjectsInSector-1))/agentsPerLine))) - 1)*(agentSideLength + agentSpacingWidth));
 
                     // Code that really moves the agent
-                    StartCoroutine(DescribeParabola(agent, position));
-
+                    StartCoroutine(MoveAgentCoroutine(agent, agent.transform.position, finalPosition));
                     break;
                 }
             }
@@ -205,30 +202,46 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
-    private IEnumerator DescribeParabola(GameObject agent, Vector3 finalPosition)
-    {
-        startingPos = agent.transform.position;
-        direction = finalPosition - startingPos;
-        float distance = Vector3.Distance(startingPos, finalPosition);
-        float upTime = 0.5f;
-        float totalTime = upTime * 2;
-        float elapsedTime = 0;
+    // Sort agents according to its threshold
+    void SortGameObjectsByThreshold(GameObject[] gameObjects){
+        Array.Sort(gameObjects, (go1, go2) => {
+            AgentProperties agentProps1 = go1.GetComponent<AgentProperties>();
+            AgentProperties agentProps2 = go2.GetComponent<AgentProperties>();
+            if (agentProps1 == null || agentProps2 == null)
+            {
+                // If either GameObject does not have an AgentProperties component,
+                // consider them equal in the sorting.
+                return 0;
+            }
+            return agentProps1.agentThreshold.CompareTo(agentProps2.agentThreshold);
+        });
+    }
 
-        while (elapsedTime < totalTime)
-        {
-            parabolicPath = (-4 * height / (upTime * upTime)) * ((elapsedTime - upTime) * (elapsedTime - upTime)) + 4*height;
-            agent.transform.position = startingPos + direction * elapsedTime / totalTime + Vector3.up * parabolicPath;
-            elapsedTime += Time.deltaTime;
+
+    // Describes a parabola with a gameobject
+    private IEnumerator MoveAgentCoroutine(GameObject agent, Vector3 start, Vector3 end) {
+        float t = 0.0f;
+        Vector3 controlPoint = new Vector3((start.x + end.x) / 2.0f, start.y + height, (start.z + end.z) / 2.0f);
+        while (t < 1.0f) {
+            t += Time.deltaTime * speed;
+            agent.transform.position = CalculateParabolaPoint(start, end, controlPoint, t);
             yield return null;
         }
-        agent.transform.position = finalPosition;
+    }
+
+    private Vector3 CalculateParabolaPoint(Vector3 start, Vector3 end, Vector3 control, float t) {
+        float u = 1.0f - t;
+        float tt = t * t;
+        float uu = u * u;
+        Vector3 point = (uu * start) + (2.0f * u * t * control) + (tt * end);
+        return point;
     }
 
 
     void SimulationStep(InputAction.CallbackContext context){
         if(canRunSimulationStep){
 
-            int aux = -1;
+            //int aux = -1;
 
             // Move to next simulation step
             if(gameObjectsInSector == agentsInSector){
@@ -244,25 +257,37 @@ public class SimulationManager : MonoBehaviour
             // Resets gameObjectsInSector
             gameObjectsInSector = 0;
 
-            // Moves the agents from reservoir to sector
+            //toMoveAgents
+            toMoveAgents = new GameObject[agentsInSector];
+
+            // List the agents that will move from reservoir to sector
             for (int i = 0; i < agentsInSector; i++){
                 int agentName = Convert.ToInt32(dataLines[8 + simulationStep*simulationStepTextDistance].Substring(1 + i*7,2));
 
                 foreach(GameObject agent in agents){
                     if(agent.GetComponent<AgentProperties>().agentName == agentName){
-                        aux += 1;
-                        Vector3 position = new Vector3 (spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + (aux%agentsPerLine)*(agentSideLength + agentSpacingLength), 
-                                                        agentY,
-                                                        spacingWidth + agentSpacingWidth + ((float)agentSideLength)/2 + (numberOfLines - Convert.ToInt32(Math.Floor(Convert.ToDouble(((float)aux)/agentsPerLine))) - 1)*(agentSideLength + agentSpacingWidth));
-
-                        // Code that really moves the agent
-                        agent.transform.position = position;
+                        toMoveAgents[gameObjectsInSector] = agent;
                         gameObjectsInSector += 1;
-
                         break;
-                    }
+                    }             
                 }
             }
+
+            // Sort agents by threshold
+            SortGameObjectsByThreshold(toMoveAgents);
+
+            // How many agents were in the sector in the past simulation step
+            int a = Convert.ToInt32(dataLines[7 + (simulationStep-1)*simulationStepTextDistance]);
+
+            for (int i = a; i < toMoveAgents.Length; i++){
+                Vector3 finalPosition = new Vector3 (spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + (i%agentsPerLine)*(agentSideLength + agentSpacingLength), 
+                                                agentY,
+                                                spacingWidth + agentSpacingWidth + ((float)agentSideLength)/2 + (numberOfLines - Convert.ToInt32(Math.Floor(Convert.ToDouble(((float)i)/agentsPerLine))) - 1)*(agentSideLength + agentSpacingWidth));
+
+                // Code that really moves the agent
+                StartCoroutine(MoveAgentCoroutine(toMoveAgents[i], toMoveAgents[i].transform.position, finalPosition));
+            }
+
 
             if(agentsInSector == numberOfAgents){
                 canRunSimulationStep = false;
