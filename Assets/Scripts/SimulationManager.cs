@@ -39,7 +39,6 @@ public class SimulationManager : MonoBehaviour
 
     // Parabola movement variables
     [SerializeField] private float height = 2.0f;
-    [SerializeField] private float speed = 50;
     private Vector3 startingPos;
     private Vector3 direction;
     private float parabolicPath;
@@ -56,8 +55,6 @@ public class SimulationManager : MonoBehaviour
     private float agentSpacingWidth;
 
     private GameObject[] agents;
-
-    private GameObject[] toBeMovedAgents = new GameObject[100];
     
     void Awake(){
         // Getting player input
@@ -250,10 +247,9 @@ public class SimulationManager : MonoBehaviour
             // Moves the agents from reservoir to sector
             for (int i = 0; i < agentsInSector; i++){
                 int agentName = Convert.ToInt32(dataLines[8 + simulationStep*simulationStepTextDistance].Substring(1 + i*7,2));
-                
+
                 foreach(GameObject agent in agents){
                     if(agent.GetComponent<AgentProperties>().agentName == agentName){
-                        toBeMovedAgents[gameObjectsInSector] = agent;
                         aux += 1;
                         Vector3 position = new Vector3 (spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + (aux%agentsPerLine)*(agentSideLength + agentSpacingLength), 
                                                         agentY,
