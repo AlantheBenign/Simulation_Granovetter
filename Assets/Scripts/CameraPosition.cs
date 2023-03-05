@@ -12,7 +12,7 @@ public class CameraPosition : MonoBehaviour
     public float z;
     public float angle;
 
-    // Start is called before the first frame update
+    // Start is called before the first frame update.
     void Start(){
         playerInput = GetComponent<PlayerInput>();
         simulationController = new SimulationController();
