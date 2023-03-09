@@ -53,6 +53,24 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Spawn_Arrow"",
+                    ""type"": ""Button"",
+                    ""id"": ""f0526163-49c7-4809-9386-bef5d416947f"",
+                    ""expectedControlType"": ""Button"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""Move_Arrow"",
+                    ""type"": ""Value"",
+                    ""id"": ""1b5002aa-856b-4706-967b-199cf60d5e60"",
+                    ""expectedControlType"": ""Vector2"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true
                 }
             ],
             ""bindings"": [
@@ -88,6 +106,72 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
                     ""action"": ""Move_One_Agent"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""b3d72d3e-5faf-4dd8-a791-f8c8418bd589"",
+                    ""path"": ""<Keyboard>/s"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard"",
+                    ""action"": ""Spawn_Arrow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""Movement"",
+                    ""id"": ""ad8716e0-61f3-41ef-a845-606aa650e50c"",
+                    ""path"": ""2DVector"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Move_Arrow"",
+                    ""isComposite"": true,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": ""up"",
+                    ""id"": ""19e2b184-76e6-4e19-a381-200f8f3a2056"",
+                    ""path"": ""<Keyboard>/upArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard"",
+                    ""action"": ""Move_Arrow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""down"",
+                    ""id"": ""dd191b7f-e486-4434-9d99-cfa730013bc5"",
+                    ""path"": ""<Keyboard>/downArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Move_Arrow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""left"",
+                    ""id"": ""237de5c4-da03-423e-8232-e5fc94fdedc9"",
+                    ""path"": ""<Keyboard>/leftArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Move_Arrow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
+                },
+                {
+                    ""name"": ""right"",
+                    ""id"": ""2b8a5e79-e623-4531-b792-9f28b29c2f5b"",
+                    ""path"": ""<Keyboard>/rightArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": ""Keyboard"",
+                    ""action"": ""Move_Arrow"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": true
                 }
             ]
         }
@@ -111,6 +195,8 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
         m_Simulation_Initial_Conditions = m_Simulation.FindAction("Initial_Conditions", throwIfNotFound: true);
         m_Simulation_Simulation_Step = m_Simulation.FindAction("Simulation_Step", throwIfNotFound: true);
         m_Simulation_Move_One_Agent = m_Simulation.FindAction("Move_One_Agent", throwIfNotFound: true);
+        m_Simulation_Spawn_Arrow = m_Simulation.FindAction("Spawn_Arrow", throwIfNotFound: true);
+        m_Simulation_Move_Arrow = m_Simulation.FindAction("Move_Arrow", throwIfNotFound: true);
     }
 
     public void Dispose()
@@ -173,6 +259,8 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
     private readonly InputAction m_Simulation_Initial_Conditions;
     private readonly InputAction m_Simulation_Simulation_Step;
     private readonly InputAction m_Simulation_Move_One_Agent;
+    private readonly InputAction m_Simulation_Spawn_Arrow;
+    private readonly InputAction m_Simulation_Move_Arrow;
     public struct SimulationActions
     {
         private @SimulationController m_Wrapper;
@@ -180,6 +268,8 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
         public InputAction @Initial_Conditions => m_Wrapper.m_Simulation_Initial_Conditions;
         public InputAction @Simulation_Step => m_Wrapper.m_Simulation_Simulation_Step;
         public InputAction @Move_One_Agent => m_Wrapper.m_Simulation_Move_One_Agent;
+        public InputAction @Spawn_Arrow => m_Wrapper.m_Simulation_Spawn_Arrow;
+        public InputAction @Move_Arrow => m_Wrapper.m_Simulation_Move_Arrow;
         public InputActionMap Get() { return m_Wrapper.m_Simulation; }
         public void Enable() { Get().Enable(); }
         public void Disable() { Get().Disable(); }
@@ -198,6 +288,12 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
                 @Move_One_Agent.started -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_One_Agent;
                 @Move_One_Agent.performed -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_One_Agent;
                 @Move_One_Agent.canceled -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_One_Agent;
+                @Spawn_Arrow.started -= m_Wrapper.m_SimulationActionsCallbackInterface.OnSpawn_Arrow;
+                @Spawn_Arrow.performed -= m_Wrapper.m_SimulationActionsCallbackInterface.OnSpawn_Arrow;
+                @Spawn_Arrow.canceled -= m_Wrapper.m_SimulationActionsCallbackInterface.OnSpawn_Arrow;
+                @Move_Arrow.started -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_Arrow;
+                @Move_Arrow.performed -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_Arrow;
+                @Move_Arrow.canceled -= m_Wrapper.m_SimulationActionsCallbackInterface.OnMove_Arrow;
             }
             m_Wrapper.m_SimulationActionsCallbackInterface = instance;
             if (instance != null)
@@ -211,6 +307,12 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
                 @Move_One_Agent.started += instance.OnMove_One_Agent;
                 @Move_One_Agent.performed += instance.OnMove_One_Agent;
                 @Move_One_Agent.canceled += instance.OnMove_One_Agent;
+                @Spawn_Arrow.started += instance.OnSpawn_Arrow;
+                @Spawn_Arrow.performed += instance.OnSpawn_Arrow;
+                @Spawn_Arrow.canceled += instance.OnSpawn_Arrow;
+                @Move_Arrow.started += instance.OnMove_Arrow;
+                @Move_Arrow.performed += instance.OnMove_Arrow;
+                @Move_Arrow.canceled += instance.OnMove_Arrow;
             }
         }
     }
@@ -229,5 +331,7 @@ public partial class @SimulationController : IInputActionCollection2, IDisposabl
         void OnInitial_Conditions(InputAction.CallbackContext context);
         void OnSimulation_Step(InputAction.CallbackContext context);
         void OnMove_One_Agent(InputAction.CallbackContext context);
+        void OnSpawn_Arrow(InputAction.CallbackContext context);
+        void OnMove_Arrow(InputAction.CallbackContext context);
     }
 }
