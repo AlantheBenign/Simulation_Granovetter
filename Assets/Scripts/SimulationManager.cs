@@ -27,10 +27,11 @@ public class SimulationManager : MonoBehaviour
     public int simulationStep = 0;
     public int agentsPerLine = 20;
     public float agentY = 1.5f;
-    public float arrowY = 3.0f;
+    public float arrowY = 4.0f;
     public bool canRunSimulationStep = false;
     public int agentsInSector = 0;
     public int gameObjectsInSector = 0;
+    public bool isMovingAgent = false;
 
     // Cube's colors 
     public int[] colorLowThreshold = new int[] {246, 238, 97};
@@ -67,7 +68,7 @@ public class SimulationManager : MonoBehaviour
         simulationController.Simulation.Simulation_Step.performed += SimulationStep;
         simulationController.Simulation.Move_One_Agent.performed += MoveOneAgent;
         simulationController.Simulation.Spawn_Arrow.performed += SpawnArrow;
-        //simulationController.Simulation.Move_Arrow.performed += MoveArrow;
+        simulationController.Simulation.Move_Arrow.performed += MoveArrow;
 
         // Simulation and visualization data
         steps = Convert.ToInt32(dataLines[0]);
@@ -104,73 +105,75 @@ public class SimulationManager : MonoBehaviour
 
     // Set the simulation to it's initial condition
     void InitialConditions(InputAction.CallbackContext context){
-        // Destroys all agents on screen (if there are any)
-        agents = GameObject.FindGameObjectsWithTag ("Agent");
-        for(int i = 0; i < agents.Length; i++){
-            Destroy(agents[i]);
-        }
-
-        // Resets simulation steps to 0
-        simulationStep = 0;
-
-        // Make it possible to run a simulation step
-        canRunSimulationStep = true;
-
-        // Resets agentsInSector and gameObjectsInSector values
-        agentsInSector = 0;
-        gameObjectsInSector = 0;
-
-        // Spawn agents in initial positions
-        for (int i = 0; i < numberOfLines; i++){
-            for (int j = 0; j < agentsPerLine && j < numberOfAgents; j++){
-                Vector3 position = new Vector3(spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + (j%agentsPerLine)*(agentSideLength + agentSpacingLength),
-                                               agentY,
-                                               2*spacingWidth + sectorWidth + ((float)agentSideLength)/2 + agentSpacingWidth + (numberOfLines - i - 1)*(agentSideLength + agentSpacingWidth));
-
-                GameObject agent = Instantiate(agentPrefab, position, agentPrefab.transform.rotation);
-
-                int number = i*agentsPerLine + j;
-
-                // Read in the simulation_data text each agent's name and threshold and max threshold
-                int agentName = Convert.ToInt32(dataLines[4].Substring(1 + number*7,2));
-                int agentThreshold = Convert.ToInt32(dataLines[4].Substring(4 + number*7,2));
-                maxThreshold = Convert.ToInt32(dataLines[1]);
-
-                // Assign each agent its name and threshold
-                agent.GetComponent<AgentProperties>().agentName = agentName;
-                agent.GetComponent<AgentProperties>().agentThreshold = agentThreshold;
-
-                // Paint each agent according to its threshold and write the agent's threshold in its head
-                // Linear function (colorLowThreshold to colorHighThreshold)
-                
-                agent.GetComponent<Renderer>().material.color = new Color(((float)((colorHighThreshold[0] - colorLowThreshold[0]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
-                                                                        ((float)((colorHighThreshold[1] - colorLowThreshold[1]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
-                                                                        ((float)((colorHighThreshold[2] - colorLowThreshold[2]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[2]))/255,
-                                                                        1);
-                
-                                                                          
-                // "Bilinear" function (colorLowThreshold to white than white to colorHighThreshold)
-                /*
-                if (((float)agentThreshold)/maxThreshold < 0.5){
-                    agent.GetComponent<Renderer>().material.color = new Color(((float)((255 - colorLowThreshold[0]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
-                                                                          ((float)((255 - colorLowThreshold[1]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
-                                                                          ((float)((255 - colorLowThreshold[2]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[2]))/255,
-                                                                          1);
-                }
-                else{
-                    agent.GetComponent<Renderer>().material.color = new Color(((float)((colorHighThreshold[0] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
-                                                                          ((float)((colorHighThreshold[1] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
-                                                                          ((float)((colorHighThreshold[2] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
-                                                                          1);
-                }
-                */
-
-                // Writes the agent threshold in the cube's surface
-                agent.GetComponentInChildren<TextMeshPro>().text = dataLines[4].Substring(4 + number*7,2);
+        if (isMovingAgent == false){
+            // Destroys all agents on screen (if there are any)
+            agents = GameObject.FindGameObjectsWithTag ("Agent");
+            for(int i = 0; i < agents.Length; i++){
+                Destroy(agents[i]);
             }
-        }
 
-        Debug.Log("Simulation Step Number: " + simulationStep);
+            // Resets simulation steps to 0
+            simulationStep = 0;
+
+            // Make it possible to run a simulation step
+            canRunSimulationStep = true;
+
+            // Resets agentsInSector and gameObjectsInSector values
+            agentsInSector = 0;
+            gameObjectsInSector = 0;
+
+            // Spawn agents in initial positions
+            for (int i = 0; i < numberOfLines; i++){
+                for (int j = 0; j < agentsPerLine && j < numberOfAgents; j++){
+                    Vector3 position = new Vector3(spacingLength + agentSpacingLength + ((float)agentSideLength)/2 + (j%agentsPerLine)*(agentSideLength + agentSpacingLength),
+                                                agentY,
+                                                2*spacingWidth + sectorWidth + ((float)agentSideLength)/2 + agentSpacingWidth + (numberOfLines - i - 1)*(agentSideLength + agentSpacingWidth));
+
+                    GameObject agent = Instantiate(agentPrefab, position, agentPrefab.transform.rotation);
+
+                    int number = i*agentsPerLine + j;
+
+                    // Read in the simulation_data text each agent's name and threshold and max threshold
+                    int agentName = Convert.ToInt32(dataLines[4].Substring(1 + number*7,2));
+                    int agentThreshold = Convert.ToInt32(dataLines[4].Substring(4 + number*7,2));
+                    maxThreshold = Convert.ToInt32(dataLines[1]);
+
+                    // Assign each agent its name and threshold
+                    agent.GetComponent<AgentProperties>().agentName = agentName;
+                    agent.GetComponent<AgentProperties>().agentThreshold = agentThreshold;
+
+                    // Paint each agent according to its threshold and write the agent's threshold in its head
+                    // Linear function (colorLowThreshold to colorHighThreshold)
+                    
+                    agent.GetComponent<Renderer>().material.color = new Color(((float)((colorHighThreshold[0] - colorLowThreshold[0]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
+                                                                            ((float)((colorHighThreshold[1] - colorLowThreshold[1]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
+                                                                            ((float)((colorHighThreshold[2] - colorLowThreshold[2]) * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[2]))/255,
+                                                                            1);
+                    
+                                                                            
+                    // "Bilinear" function (colorLowThreshold to white than white to colorHighThreshold)
+                    /*
+                    if (((float)agentThreshold)/maxThreshold < 0.5){
+                        agent.GetComponent<Renderer>().material.color = new Color(((float)((255 - colorLowThreshold[0]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[0]))/255,
+                                                                            ((float)((255 - colorLowThreshold[1]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[1]))/255,
+                                                                            ((float)((255 - colorLowThreshold[2]) * 2 * (((float)agentThreshold)/maxThreshold) + colorLowThreshold[2]))/255,
+                                                                            1);
+                    }
+                    else{
+                        agent.GetComponent<Renderer>().material.color = new Color(((float)((colorHighThreshold[0] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
+                                                                            ((float)((colorHighThreshold[1] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
+                                                                            ((float)((colorHighThreshold[2] - 255) * 2 * (((float)agentThreshold)/maxThreshold - 0.5f) + 255))/255,
+                                                                            1);
+                    }
+                    */
+
+                    // Writes the agent threshold in the cube's surface
+                    agent.GetComponentInChildren<TextMeshPro>().text = dataLines[4].Substring(4 + number*7,2);
+                }
+            }
+
+            Debug.Log("Simulation Step Number: " + simulationStep);
+        }
     }
 
     void SpawnArrow(InputAction.CallbackContext context){
@@ -181,14 +184,36 @@ public class SimulationManager : MonoBehaviour
         GameObject arrow = Instantiate(arrowPrefab, position, Quaternion.identity);
     }
 
-    /*void MoveArrow(InputAction.CallbackContext context){
+    void MoveArrow(InputAction.CallbackContext context){
         GameObject arrow = GameObject.FindGameObjectWithTag("Arrow");
         int xPos = arrow.GetComponent<ArrowProperties>().x;
         int yPos = arrow.GetComponent<ArrowProperties>().y;
         int xMove = (int)context.ReadValue<Vector2>()[0];
-        int yMOve = (int)context.ReadValue<Vector2>()[1];
 
-        if (xMove < 0 && ){
+        if (xMove < 0 && xPos > 0){
+            xPos -= 1;
+        }
+        else{
+            if (xMove < 0 && xPos == 0){
+                if (yPos != 0){
+                    yPos -= 1;
+                    xPos = agentsPerLine - 1;
+                }
+            }
+            else{
+                if (xMove > 0 && xPos < (agentsPerLine - 1)){
+                    xPos += 1;
+                }
+                else{
+                    if (xMove > 0 && xPos == agentsPerLine - 1){
+                        if (yPos != numberOfLines - 1){
+                            yPos += 1;
+                            xPos = 0;
+                        }
+                    }
+                }
+
+            }
 
         }
 
@@ -197,7 +222,10 @@ public class SimulationManager : MonoBehaviour
                                         2*spacingWidth + sectorWidth + ((float)agentSideLength)/2 + agentSpacingWidth + (numberOfLines - yPos - 1)*(agentSideLength + agentSpacingWidth));
 
         arrow.transform.position = position;
-    }*/
+
+        arrow.GetComponent<ArrowProperties>().x = xPos;
+        arrow.GetComponent<ArrowProperties>().y = yPos;
+    }
 
     void MoveOneAgent(InputAction.CallbackContext context){
         if(canRunSimulationStep){
@@ -260,10 +288,12 @@ public class SimulationManager : MonoBehaviour
         float t = 0.0f;
         Vector3 controlPoint = new Vector3((start.x + end.x) / 2.0f, start.y + height, (start.z + end.z) / 2.0f);
         while (t < 1.0f) {
+            isMovingAgent = true;
             t += Time.deltaTime * speed;
             agent.transform.position = CalculateParabolaPoint(start, end, controlPoint, t);
             yield return null;
         }
+        isMovingAgent = false;
     }
 
     private Vector3 CalculateParabolaPoint(Vector3 start, Vector3 end, Vector3 control, float t) {
@@ -277,9 +307,6 @@ public class SimulationManager : MonoBehaviour
 
     void SimulationStep(InputAction.CallbackContext context){
         if(canRunSimulationStep){
-
-            //int aux = -1;
-
             // Move to next simulation step
             if(gameObjectsInSector == agentsInSector){
                 simulationStep++;
